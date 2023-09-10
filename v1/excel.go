@@ -17,6 +17,72 @@ type Excel struct {
 	Row       int
 }
 
+// GenerateByStruct 生成excel
+func GenerateByStruct(headers []string, slice any) (file *excelize.File, err error) {
+	sheetName := "sheet1"
+
+	excel := &Excel{
+		File:      excelize.NewFile(),
+		SheetName: sheetName,
+	}
+
+	if err := setSheetHeaders(excel, headers); err != nil {
+		return nil, err
+	}
+
+	if err := setSheetDataByStruct(excel, slice); err != nil {
+		return nil, err
+	}
+
+	return excel.File, nil
+}
+
+// SetSheetData 设置数据
+func setSheetDataByStruct(excel *Excel, slice any) (err error) {
+	v := reflect.Indirect(reflect.ValueOf(slice))
+	if v.Type().Kind() != reflect.Slice {
+		return errors.New("目前只支持切片类型生成excel")
+	}
+	if v.Len() == 0 {
+		return
+	}
+
+	if err := setSheetTitle(excel, v.Index(0).Interface()); err != nil {
+		return err
+	}
+
+	if err := setSheetRowDataByStruct(excel, slice); err != nil {
+		return err
+	}
+	return
+}
+
+func setSheetRowDataByStruct(excel *Excel, slice any) error {
+	v := reflect.Indirect(reflect.ValueOf(slice))
+
+	for i := 0; i < v.Len(); i++ {
+		structValue := reflect.Indirect(v.Index(i))
+		structType := reflect.TypeOf(v.Index(i).Interface())
+		if structType.Kind() == reflect.Ptr {
+			structType = structType.Elem()
+		}
+
+		var rowData []any
+		for j := 0; j < structType.NumField(); j++ {
+			value := structValue.Field(j).Interface()
+			rowData = append(rowData, value)
+		}
+
+		excel.Row++
+		err := excel.File.SetSheetRow(excel.SheetName, fmt.Sprintf("%s%d", startCol, excel.Row), &rowData)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Generate 生成excel
 func Generate[T any](headers []string, slice []T) (file *excelize.File, err error) {
 	sheetName := "sheet1"
