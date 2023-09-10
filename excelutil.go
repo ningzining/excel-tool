@@ -7,106 +7,86 @@ import (
 	"reflect"
 )
 
-// 获取excel的列编号
-func genExcelField(num int) string {
-	var (
-		Str  string
-		k    int
-		temp []int
-	)
-	Slice := []string{"", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
-		"P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"}
-
-	if num > 26 {
-		for {
-			k = num % 26
-			if k == 0 {
-				temp = append(temp, 26)
-				k = 26
-			} else {
-				temp = append(temp, k)
-			}
-			num = (num - k) / 26
-			if num <= 26 {
-				temp = append(temp, num)
-				break
-			}
-		}
-	} else {
-		return Slice[num]
-	}
-
-	for _, value := range temp {
-		Str = Slice[value] + Str
-	}
-	return Str
-}
-
-// 获取结构体的tag中的excel列表以及tag对应的excel列
-func getFields(v interface{}) (fields []string, fieldMap map[string]string, err error) {
-	fieldMap = make(map[string]string, 8)
-	var item interface{}
-	switch reflect.TypeOf(v).Kind() {
-	case reflect.Array, reflect.Slice:
-		values := reflect.ValueOf(v)
-		if values.Len() == 0 {
-			return
-		}
-		item = values.Index(0).Interface()
-	case reflect.Struct:
-		reflect.ValueOf(v).Interface()
-	default:
-		err = errors.New(fmt.Sprintf("type %v not support", reflect.TypeOf(v).Kind()))
-		return
-	}
-	typeOf := reflect.TypeOf(item)
-	for i := 0; i < typeOf.NumField(); i++ {
-		field := typeOf.Field(i).Tag.Get("excel")
-		fields = append(fields, field)
-		fieldMap[field] = genExcelField(len(fields))
-	}
-	return
-}
-
-// 获取结构体转为map[excelTag]structVal
-func struct2MapList(v interface{}) (mapList []map[string]string) {
-	switch reflect.TypeOf(v).Kind() {
-	case reflect.Array, reflect.Slice:
-		values := reflect.ValueOf(v)
-		for i := 0; i < values.Len(); i++ {
-			value := values.Index(i).Interface()
-			typeOf := reflect.TypeOf(value)
-			m := make(map[string]string)
-			// 获取列所对应的值
-			for j := 0; j < typeOf.NumField(); j++ {
-				structField := typeOf.Field(j)
-				name := reflect.ValueOf(value).FieldByName(structField.Name)
-				field := typeOf.Field(j).Tag.Get("excel")
-				m[field] = fmt.Sprintf("%v", name)
-			}
-			mapList = append(mapList, m)
-		}
-	}
-	return
-}
-
-// 生成excel，row为起始行从1开始
-func GenExcel(v interface{}, row int) (file *excelize.File, err error) {
-	fields, fieldMap, err := getFields(v)
-	if err != nil {
-		return
-	}
+// GenExcel 生成excel
+func GenExcel(headers []string, slice interface{}) (file *excelize.File, err error) {
 	file = excelize.NewFile()
 	sheetName := "sheet1"
-	for _, field := range fields {
-		err = file.SetCellValue(sheetName, fmt.Sprintf("%s%d", fieldMap[field], row), field)
+
+	if err := setSheetHeaders(file, sheetName, headers); err != nil {
+		return nil, err
 	}
-	list := struct2MapList(v)
-	for _, m := range list {
-		row++
-		for key, value := range m {
-			err = file.SetCellValue(sheetName, fmt.Sprintf("%s%d", fieldMap[key], row), value)
-		}
+
+	if err := setSheetData(file, sheetName, slice); err != nil {
+		return nil, err
+	}
+
+	return
+}
+
+// 设置表头
+func setSheetHeaders(file *excelize.File, sheetName string, headers []string) error {
+	if err := file.SetSheetRow(sheetName, "A1", &headers); err != nil {
+		return err
+	}
+	return nil
+}
+
+// 设置数据
+func setSheetData(file *excelize.File, sheetName string, data any) (err error) {
+	v := reflect.Indirect(reflect.ValueOf(data))
+	if v.Type().Kind() != reflect.Slice {
+		return errors.New("目前只支持切片类型生成excel")
+	}
+	if v.Len() == 0 {
+		return
+	}
+	structValue := reflect.Indirect(v.Index(0)).Interface()
+	rowNum := 2
+	if err := setSheetTitle(file, sheetName, rowNum, structValue); err != nil {
+		return err
+	} else {
+		rowNum++
+	}
+
+	if err := setSheetRowData(file, sheetName, rowNum, v); err != nil {
+		return err
 	}
 	return
+}
+
+// 设置行数据
+func setSheetRowData(file *excelize.File, sheetName string, rowNum int, data reflect.Value) error {
+	for i := 0; i < data.Len(); i++ {
+		structValue := reflect.Indirect(data.Index(i)).Interface()
+		structType := reflect.TypeOf(reflect.Indirect(data.Index(i)).Interface())
+
+		var rowData []any
+		for j := 0; j < structType.NumField(); j++ {
+			value := reflect.ValueOf(structValue).FieldByName(structType.Field(j).Name)
+			rowData = append(rowData, value.Interface())
+		}
+
+		err := file.SetSheetRow(sheetName, fmt.Sprintf("A%d", rowNum), &rowData)
+		if err != nil {
+			return err
+		}
+		rowNum++
+	}
+
+	return nil
+}
+
+// 设置sheet标题
+func setSheetTitle(file *excelize.File, sheetName string, rowNum int, v any) error {
+	var titles []string
+	itemType := reflect.TypeOf(v)
+	for i := 0; i < itemType.NumField(); i++ {
+		field := itemType.Field(i).Tag.Get("excel")
+		titles = append(titles, field)
+	}
+	if err := file.SetSheetRow(sheetName, fmt.Sprintf("A%d", rowNum), &titles); err != nil {
+		return err
+	}
+
+	return nil
 }
