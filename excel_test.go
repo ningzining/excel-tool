@@ -12,7 +12,7 @@ type User struct {
 	Class string `excel:"班级" json:"class"`
 }
 
-func TestGenExcel(t *testing.T) {
+func TestGenerate(t *testing.T) {
 	var users []*User
 	user1 := User{
 		Id:    1,
@@ -33,11 +33,11 @@ func TestGenExcel(t *testing.T) {
 		Class: "A2",
 	}
 	users = append(users, &user1, &user2, &user3)
-	file, err := GenExcel([]string{"兔学院学生表"}, users)
+	file, err := Generate([]string{"兔学院学生表"}, users)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
-	err = file.SaveAs("user.xlsx")
+	err = file.SaveAs("user_generate.xlsx")
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}

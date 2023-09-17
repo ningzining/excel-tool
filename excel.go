@@ -1,4 +1,4 @@
-package v1
+package main
 
 import (
 	"errors"
@@ -17,8 +17,8 @@ type Excel struct {
 	Row       int
 }
 
-// GenerateByStruct 生成excel
-func GenerateByStruct(headers []string, slice any) (file *excelize.File, err error) {
+// Generate 生成excel
+func Generate(headers []string, slice any) (file *excelize.File, err error) {
 	sheetName := "sheet1"
 
 	excel := &Excel{
@@ -30,7 +30,7 @@ func GenerateByStruct(headers []string, slice any) (file *excelize.File, err err
 		return nil, err
 	}
 
-	if err := setSheetDataByStruct(excel, slice); err != nil {
+	if err := setSheetData(excel, slice); err != nil {
 		return nil, err
 	}
 
@@ -38,7 +38,7 @@ func GenerateByStruct(headers []string, slice any) (file *excelize.File, err err
 }
 
 // SetSheetData 设置数据
-func setSheetDataByStruct(excel *Excel, slice any) (err error) {
+func setSheetData(excel *Excel, slice any) (err error) {
 	v := reflect.Indirect(reflect.ValueOf(slice))
 	if v.Type().Kind() != reflect.Slice {
 		return errors.New("目前只支持切片类型生成excel")
@@ -51,13 +51,13 @@ func setSheetDataByStruct(excel *Excel, slice any) (err error) {
 		return err
 	}
 
-	if err := setSheetRowDataByStruct(excel, slice); err != nil {
+	if err := setSheetRowData(excel, slice); err != nil {
 		return err
 	}
 	return
 }
 
-func setSheetRowDataByStruct(excel *Excel, slice any) error {
+func setSheetRowData(excel *Excel, slice any) error {
 	v := reflect.Indirect(reflect.ValueOf(slice))
 
 	for i := 0; i < v.Len(); i++ {
@@ -83,80 +83,12 @@ func setSheetRowDataByStruct(excel *Excel, slice any) error {
 	return nil
 }
 
-// Generate 生成excel
-func Generate[T any](headers []string, slice []T) (file *excelize.File, err error) {
-	sheetName := "sheet1"
-
-	excel := &Excel{
-		File:      excelize.NewFile(),
-		SheetName: sheetName,
-	}
-
-	if err := setSheetHeaders(excel, headers); err != nil {
-		return nil, err
-	}
-
-	if err := setSheetData[T](excel, slice); err != nil {
-		return nil, err
-	}
-
-	return excel.File, nil
-}
-
 // SetSheetHeaders 设置表头
 func setSheetHeaders(excel *Excel, headers []string) error {
 	excel.Row++
 	if err := excel.File.SetSheetRow(excel.SheetName, fmt.Sprintf("%s%d", startCol, excel.Row), &headers); err != nil {
 		return err
 	}
-	return nil
-}
-
-// SetSheetData 设置数据
-func setSheetData[T any](excel *Excel, data []T) (err error) {
-	v := reflect.Indirect(reflect.ValueOf(data))
-	if v.Type().Kind() != reflect.Slice {
-		return errors.New("目前只支持切片类型生成excel")
-	}
-	if v.Len() == 0 {
-		return
-	}
-
-	rowNum := 2
-	if err := setSheetTitle[T](excel, data[0]); err != nil {
-		return err
-	} else {
-		rowNum++
-	}
-
-	if err := setSheetRowData[T](excel, data); err != nil {
-		return err
-	}
-	return
-}
-
-// 设置行数据
-func setSheetRowData[T any](excel *Excel, data []T) error {
-	for i := 0; i < len(data); i++ {
-		structValue := reflect.Indirect(reflect.ValueOf(data[i]))
-		structType := reflect.TypeOf(data[i])
-		if structType.Kind() == reflect.Ptr {
-			structType = structType.Elem()
-		}
-
-		var rowData []any
-		for j := 0; j < structType.NumField(); j++ {
-			value := structValue.FieldByName(structType.Field(j).Name)
-			rowData = append(rowData, value.Interface())
-		}
-
-		excel.Row++
-		err := excel.File.SetSheetRow(excel.SheetName, fmt.Sprintf("%s%d", startCol, excel.Row), &rowData)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
