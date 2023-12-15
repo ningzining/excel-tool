@@ -14,7 +14,7 @@ type User struct {
 
 func TestSaveExcel(t *testing.T) {
 	users := mockUsers()
-	if err := New("sheet1").
+	if err := New().
 		SetTitles([]string{"兔学院学生表"}).
 		SetData(&users).
 		SaveAs("user_generate.xlsx").
@@ -26,7 +26,7 @@ func TestSaveExcel(t *testing.T) {
 
 func TestSaveNilExcel(t *testing.T) {
 	var users []*User
-	if err := New("sheet1").
+	if err := New().
 		SetTitles([]string{"兔学院学生表"}).
 		SetData(users).
 		SaveAs("user_generate_nil.xlsx").
@@ -45,7 +45,7 @@ func TestWriterExcel(t *testing.T) {
 	defer file.Close()
 
 	users := mockUsers()
-	if err := New("sheet1").
+	if err := New().
 		SetTitles([]string{"兔学院学生表"}).
 		SetData(users).
 		Write(file).

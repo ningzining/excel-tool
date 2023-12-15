@@ -9,21 +9,27 @@ import (
 )
 
 const (
-	startCol = "A"
+	startCol  = "A"
+	sheetName = "sheet1"
 )
 
 type Excel struct {
-	File      *excelize.File
-	SheetName string
-	Row       int
-	Error     error
+	File   *excelize.File
+	Config *Config
+	Error  error
 }
 
-func New(sheetName string) *Excel {
-	return &Excel{
-		File:      excelize.NewFile(),
+func New(opts ...OptionFunc) *Excel {
+	cfg := &Config{
 		SheetName: sheetName,
 		Row:       1,
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	return &Excel{
+		File:   excelize.NewFile(),
+		Config: cfg,
 	}
 }
 
@@ -36,10 +42,10 @@ func (e *Excel) SaveAs(name string) *Excel {
 
 // SetTitles 设置表头
 func (e *Excel) SetTitles(titles []string) *Excel {
-	if err := e.File.SetSheetRow(e.SheetName, fmt.Sprintf("%s%d", startCol, e.Row), &titles); err != nil {
+	if err := e.File.SetSheetRow(e.Config.SheetName, fmt.Sprintf("%s%d", startCol, e.Config.Row), &titles); err != nil {
 		e.Error = err
 	}
-	e.Row++
+	e.Config.Row++
 	return e
 }
 
@@ -80,10 +86,10 @@ func (e *Excel) setSheetHeaderRow(data any) error {
 		headerRows = append(headerRows, field)
 	}
 
-	if err := e.File.SetSheetRow(e.SheetName, fmt.Sprintf("%s%d", startCol, e.Row), &headerRows); err != nil {
+	if err := e.File.SetSheetRow(e.Config.SheetName, fmt.Sprintf("%s%d", startCol, e.Config.Row), &headerRows); err != nil {
 		return err
 	}
-	e.Row++
+	e.Config.Row++
 
 	return nil
 }
@@ -103,11 +109,11 @@ func (e *Excel) setSheetRow(slice any) error {
 			rows = append(rows, value)
 		}
 
-		err := e.File.SetSheetRow(e.SheetName, fmt.Sprintf("%s%d", startCol, e.Row), &rows)
+		err := e.File.SetSheetRow(e.Config.SheetName, fmt.Sprintf("%s%d", startCol, e.Config.Row), &rows)
 		if err != nil {
 			return err
 		}
-		e.Row++
+		e.Config.Row++
 	}
 
 	return nil
