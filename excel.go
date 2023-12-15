@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/xuri/excelize/v2"
+	"io"
 	"reflect"
 )
 
@@ -15,51 +16,80 @@ type Excel struct {
 	File      *excelize.File
 	SheetName string
 	Row       int
+	Error     error
 }
 
-// Generate 生成excel
-func Generate(headers []string, slice any) (file *excelize.File, err error) {
-	sheetName := "sheet1"
-
-	excel := &Excel{
+func New(sheetName string) *Excel {
+	return &Excel{
 		File:      excelize.NewFile(),
 		SheetName: sheetName,
+		Row:       1,
 	}
-
-	if err := setSheetHeaders(excel, headers); err != nil {
-		return nil, err
-	}
-
-	if err := setSheetData(excel, slice); err != nil {
-		return nil, err
-	}
-
-	return excel.File, nil
 }
 
-// SetSheetData 设置数据
-func setSheetData(excel *Excel, slice any) (err error) {
-	v := reflect.Indirect(reflect.ValueOf(slice))
+func (e *Excel) SaveAs(name string) *Excel {
+	if err := e.File.SaveAs(name); err != nil {
+		e.Error = err
+	}
+	return e
+}
+
+// SetTitles 设置表头
+func (e *Excel) SetTitles(titles []string) *Excel {
+	if err := e.File.SetSheetRow(e.SheetName, fmt.Sprintf("%s%d", startCol, e.Row), &titles); err != nil {
+		e.Error = err
+	}
+	e.Row++
+	return e
+}
+
+func (e *Excel) SetData(slice any) *Excel {
+	sliceValue := reflect.ValueOf(slice)
+	if sliceValue.IsNil() {
+		return e
+	}
+	v := reflect.Indirect(sliceValue)
 	if v.Type().Kind() != reflect.Slice {
-		return errors.New("目前只支持切片类型生成excel")
+		e.Error = errors.New("目前只支持切片类型生成excel")
+		return e
 	}
 	if v.Len() == 0 {
-		return
+		return e
 	}
 
-	if err := setSheetTitle(excel, v.Index(0).Interface()); err != nil {
-		return err
+	if err := e.setSheetHeaderRow(v.Index(0).Interface()); err != nil {
+		e.Error = err
+		return e
 	}
-
-	if err := setSheetRowData(excel, slice); err != nil {
-		return err
+	if err := e.setSheetRow(slice); err != nil {
+		e.Error = err
+		return e
 	}
-	return
+	return e
 }
 
-func setSheetRowData(excel *Excel, slice any) error {
-	v := reflect.Indirect(reflect.ValueOf(slice))
+// 设置headerRow标题行
+func (e *Excel) setSheetHeaderRow(data any) error {
+	var headerRows []string
+	structType := reflect.TypeOf(data)
+	if structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i).Tag.Get("excel")
+		headerRows = append(headerRows, field)
+	}
 
+	if err := e.File.SetSheetRow(e.SheetName, fmt.Sprintf("%s%d", startCol, e.Row), &headerRows); err != nil {
+		return err
+	}
+	e.Row++
+
+	return nil
+}
+
+func (e *Excel) setSheetRow(slice any) error {
+	v := reflect.Indirect(reflect.ValueOf(slice))
 	for i := 0; i < v.Len(); i++ {
 		structValue := reflect.Indirect(v.Index(i))
 		structType := reflect.TypeOf(v.Index(i).Interface())
@@ -67,46 +97,25 @@ func setSheetRowData(excel *Excel, slice any) error {
 			structType = structType.Elem()
 		}
 
-		var rowData []any
+		var rows []any
 		for j := 0; j < structType.NumField(); j++ {
 			value := structValue.Field(j).Interface()
-			rowData = append(rowData, value)
+			rows = append(rows, value)
 		}
 
-		excel.Row++
-		err := excel.File.SetSheetRow(excel.SheetName, fmt.Sprintf("%s%d", startCol, excel.Row), &rowData)
+		err := e.File.SetSheetRow(e.SheetName, fmt.Sprintf("%s%d", startCol, e.Row), &rows)
 		if err != nil {
 			return err
 		}
+		e.Row++
 	}
 
 	return nil
 }
 
-// SetSheetHeaders 设置表头
-func setSheetHeaders(excel *Excel, headers []string) error {
-	excel.Row++
-	if err := excel.File.SetSheetRow(excel.SheetName, fmt.Sprintf("%s%d", startCol, excel.Row), &headers); err != nil {
-		return err
+func (e *Excel) Write(w io.Writer) *Excel {
+	if err := e.File.Write(w); err != nil {
+		e.Error = err
 	}
-	return nil
-}
-
-// 设置sheet标题
-func setSheetTitle[T any](excel *Excel, data T) error {
-	var titles []string
-	structType := reflect.TypeOf(data)
-	if structType.Kind() == reflect.Ptr {
-		structType = structType.Elem()
-	}
-	for i := 0; i < structType.NumField(); i++ {
-		field := structType.Field(i).Tag.Get("excel")
-		titles = append(titles, field)
-	}
-	excel.Row++
-	if err := excel.File.SetSheetRow(excel.SheetName, fmt.Sprintf("%s%d", startCol, excel.Row), &titles); err != nil {
-		return err
-	}
-
-	return nil
+	return e
 }

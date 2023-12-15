@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"os"
 	"testing"
 )
 
@@ -12,7 +12,50 @@ type User struct {
 	Class string `excel:"班级" json:"class"`
 }
 
-func TestGenerate(t *testing.T) {
+func TestSaveExcel(t *testing.T) {
+	users := mockUsers()
+	if err := New("sheet1").
+		SetTitles([]string{"兔学院学生表"}).
+		SetData(&users).
+		SaveAs("user_generate.xlsx").
+		Error; err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func TestSaveNilExcel(t *testing.T) {
+	var users []*User
+	if err := New("sheet1").
+		SetTitles([]string{"兔学院学生表"}).
+		SetData(users).
+		SaveAs("user_generate_nil.xlsx").
+		Error; err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func TestWriterExcel(t *testing.T) {
+	file, err := os.Create("user_write.xlsx")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer file.Close()
+
+	users := mockUsers()
+	if err := New("sheet1").
+		SetTitles([]string{"兔学院学生表"}).
+		SetData(users).
+		Write(file).
+		Error; err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func mockUsers() []*User {
 	var users []*User
 	user1 := User{
 		Id:    1,
@@ -22,7 +65,7 @@ func TestGenerate(t *testing.T) {
 	}
 	user2 := User{
 		Id:    2,
-		Name:  "",
+		Name:  "兔柠",
 		Age:   13,
 		Class: "A1",
 	}
@@ -33,12 +76,5 @@ func TestGenerate(t *testing.T) {
 		Class: "A2",
 	}
 	users = append(users, &user1, &user2, &user3)
-	file, err := Generate([]string{"兔学院学生表"}, users)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-	}
-	err = file.SaveAs("user_generate.xlsx")
-	if err != nil {
-		fmt.Printf("%v\n", err)
-	}
+	return users
 }
