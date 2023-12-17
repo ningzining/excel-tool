@@ -1,14 +1,22 @@
 package main
 
-type Config struct {
+type options struct {
 	SheetName string
 	Row       int
 }
 
-type OptionFunc func(config *Config)
+type Option interface {
+	apply(o *options)
+}
 
-func WithSheetName(sheetName string) OptionFunc {
-	return func(config *Config) {
-		config.SheetName = sheetName
-	}
+type optionFunc func(o *options)
+
+func (of optionFunc) apply(o *options) {
+	of(o)
+}
+
+func WithStartRow(row int) Option {
+	return optionFunc(func(o *options) {
+		o.Row = row
+	})
 }

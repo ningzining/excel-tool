@@ -17,7 +17,7 @@ func TestSaveExcel(t *testing.T) {
 	if err := New().
 		SetTitles([]string{"兔学院学生表"}).
 		SetData(&users).
-		SaveAs("user_generate.xlsx").
+		SaveAs("sheet_name.xlsx").
 		Error; err != nil {
 		t.Error(err)
 		return
