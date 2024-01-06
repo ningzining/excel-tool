@@ -11,6 +11,8 @@ import (
 const (
 	startCol         = "A"
 	defaultSheetName = "Sheet1"
+	tagKey           = "excel"
+	ignoreTagValue   = "-"
 )
 
 type Excel struct {
@@ -41,16 +43,17 @@ func (e *Excel) SaveAs(name string) *Excel {
 	return e
 }
 
-// SetTitles 设置表头
-func (e *Excel) SetTitles(titles []string) *Excel {
-	if err := e.File.SetSheetRow(e.Options.SheetName, fmt.Sprintf("%s%d", startCol, e.Options.Row), &titles); err != nil {
+// SetRow 设置数据行
+func (e *Excel) SetRow(data []string) *Excel {
+	if err := e.File.SetSheetRow(e.Options.SheetName, fmt.Sprintf("%s%d", startCol, e.Options.Row), &data); err != nil {
 		e.Error = err
 	}
 	e.Options.Row++
 	return e
 }
 
-func (e *Excel) SetData(slice any) *Excel {
+// SetSliceDataWithTag 设置数据和tag行
+func (e *Excel) SetSliceDataWithTag(slice any) *Excel {
 	sliceValue := reflect.ValueOf(slice)
 	if sliceValue.IsNil() {
 		return e
@@ -75,6 +78,28 @@ func (e *Excel) SetData(slice any) *Excel {
 	return e
 }
 
+// SetSliceData 设置数据行
+func (e *Excel) SetSliceData(slice any) *Excel {
+	sliceValue := reflect.ValueOf(slice)
+	if sliceValue.IsNil() {
+		return e
+	}
+	v := reflect.Indirect(sliceValue)
+	if v.Type().Kind() != reflect.Slice {
+		e.Error = errors.New("目前只支持切片类型生成excel")
+		return e
+	}
+	if v.Len() == 0 {
+		return e
+	}
+
+	if err := e.setSheetRow(slice); err != nil {
+		e.Error = err
+		return e
+	}
+	return e
+}
+
 // 设置headerRow标题行
 func (e *Excel) setSheetHeaderRow(data any) error {
 	var headerRows []string
@@ -83,7 +108,10 @@ func (e *Excel) setSheetHeaderRow(data any) error {
 		structType = structType.Elem()
 	}
 	for i := 0; i < structType.NumField(); i++ {
-		field := structType.Field(i).Tag.Get("excel")
+		field := structType.Field(i).Tag.Get(tagKey)
+		if field == ignoreTagValue {
+			continue
+		}
 		headerRows = append(headerRows, field)
 	}
 
@@ -106,6 +134,10 @@ func (e *Excel) setSheetRow(slice any) error {
 
 		var rows []any
 		for j := 0; j < structType.NumField(); j++ {
+			tag := structType.Field(j).Tag.Get(tagKey)
+			if tag == ignoreTagValue {
+				continue
+			}
 			value := structValue.Field(j).Interface()
 			rows = append(rows, value)
 		}

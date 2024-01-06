@@ -6,17 +6,18 @@ import (
 )
 
 type User struct {
-	Id    int    `excel:"编号" json:"id"`
-	Name  string `excel:"学生名字" json:"name"`
-	Age   int    `excel:"年龄" json:"age"`
-	Class string `excel:"班级" json:"class"`
+	Id          int    `excel:"编号" json:"id"`
+	Name        string `excel:"学生名字" json:"name"`
+	Age         int    `excel:"年龄" json:"age"`
+	Class       string `excel:"班级" json:"class"`
+	IgnoreClass string `excel:"-"`
 }
 
 func TestSaveExcel(t *testing.T) {
 	users := mockUsers()
 	if err := New().
-		SetTitles([]string{"兔学院学生表"}).
-		SetData(&users).
+		SetRow([]string{"兔学院学生表"}).
+		SetSliceDataWithTag(&users).
 		SaveAs("sheet_name.xlsx").
 		Error; err != nil {
 		t.Error(err)
@@ -27,8 +28,8 @@ func TestSaveExcel(t *testing.T) {
 func TestSaveNilExcel(t *testing.T) {
 	var users []*User
 	if err := New().
-		SetTitles([]string{"兔学院学生表"}).
-		SetData(users).
+		SetRow([]string{"兔学院学生表"}).
+		SetSliceDataWithTag(users).
 		SaveAs("user_generate_nil.xlsx").
 		Error; err != nil {
 		t.Error(err)
@@ -46,8 +47,8 @@ func TestWriterExcel(t *testing.T) {
 
 	users := mockUsers()
 	if err := New().
-		SetTitles([]string{"兔学院学生表"}).
-		SetData(users).
+		SetRow([]string{"兔学院学生表"}).
+		SetSliceDataWithTag(users).
 		Write(file).
 		Error; err != nil {
 		t.Error(err)
