@@ -11,6 +11,7 @@ type User struct {
 	Age         int    `excel:"年龄" json:"age"`
 	Class       string `excel:"班级" json:"class"`
 	IgnoreClass string `excel:"-"`
+	Pic         string `excel:"图片" cellType:"picture"`
 }
 
 func TestSaveExcel(t *testing.T) {
@@ -63,18 +64,21 @@ func mockUsers() []*User {
 		Name:  "兔瓜",
 		Age:   11,
 		Class: "A1",
+		Pic:   "",
 	}
 	user2 := User{
 		Id:    2,
 		Name:  "兔柠",
 		Age:   13,
 		Class: "A1",
+		Pic:   "",
 	}
 	user3 := User{
 		Id:    2,
 		Name:  "兔罗",
 		Age:   12,
 		Class: "A2",
+		Pic:   "",
 	}
 	users = append(users, &user1, &user2, &user3)
 	return users

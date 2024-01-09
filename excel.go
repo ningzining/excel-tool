@@ -4,8 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/xuri/excelize/v2"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
+	"net/http"
+	"path"
 	"reflect"
+	"strings"
 )
 
 const (
@@ -13,6 +19,8 @@ const (
 	defaultSheetName = "Sheet1"
 	tagKey           = "excel"
 	ignoreTagValue   = "-"
+	cellType         = "cellType"
+	picCell          = "picture"
 )
 
 type Excel struct {
@@ -132,19 +140,57 @@ func (e *Excel) setSheetRow(slice any) error {
 			structType = structType.Elem()
 		}
 
-		var rows []any
+		col := 1
 		for j := 0; j < structType.NumField(); j++ {
 			tag := structType.Field(j).Tag.Get(tagKey)
 			if tag == ignoreTagValue {
 				continue
 			}
+			cellName, err := excelize.CoordinatesToCellName(col, e.Options.Row)
+			if err != nil {
+				return err
+			}
 			value := structValue.Field(j).Interface()
-			rows = append(rows, value)
-		}
+			if structType.Field(j).Tag.Get(cellType) == picCell {
+				picPath := value.(string)
+				if picPath != "" {
+					ext := strings.ToLower(path.Ext(picPath))
+					response, err := http.Get(picPath)
+					if err != nil {
+						return err
+					}
+					defer response.Body.Close()
 
-		err := e.File.SetSheetRow(e.Options.SheetName, fmt.Sprintf("%s%d", startCol, e.Options.Row), &rows)
-		if err != nil {
-			return err
+					bytes, err := io.ReadAll(response.Body)
+					if err != nil {
+						return err
+					}
+					if err := e.File.AddPictureFromBytes(e.Options.SheetName, cellName, &excelize.Picture{Extension: ext, File: bytes, Format: nil}); err != nil {
+						return err
+					}
+				}
+			} else {
+				if err := e.File.SetCellValue(e.Options.SheetName, cellName, value); err != nil {
+					return err
+				}
+			}
+			col++
+			//if structType.Field(j).Tag.Get(cellType) == picCell {
+			//	picCol = j
+			//	picPath = structValue.Field(j).Interface().(string)
+			//	if picPath == "" {
+			//		continue
+			//	}
+			//	cellName, err := excelize.CoordinatesToCellName(picCol, e.Options.Row)
+			//	if err != nil {
+			//		return err
+			//	}
+			//	if err := e.File.AddPicture(e.Options.SheetName, cellName, picPath, nil); err != nil {
+			//		return err
+			//	}
+			//} else {
+			//}
+
 		}
 		e.Options.Row++
 	}
