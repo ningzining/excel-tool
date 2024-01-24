@@ -17,6 +17,7 @@ const (
 
 	cellTypeTag     = "cellType"
 	cellTypePicture = "picture"
+	cellTypeLink    = "link"
 )
 
 // SetRow 设置数据行
@@ -174,6 +175,10 @@ func (e *Excel) setCellValue(cellType string, value any, col int) error {
 			); err != nil {
 				return err
 			}
+		}
+	case cellTypeLink:
+		if err := e.File.SetCellHyperLink(e.Options.SheetName, cellName, value.(string), "External"); err != nil {
+			return err
 		}
 	default:
 		if err := e.File.SetCellValue(e.Options.SheetName, cellName, value); err != nil {
