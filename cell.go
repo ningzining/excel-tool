@@ -7,7 +7,6 @@ import (
 	_ "image/png"
 	"path"
 	"reflect"
-	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -160,14 +159,17 @@ func (e *Excel) setCellValue(cellType string, value any, col int) error {
 			if err != nil {
 				return err
 			}
-
+			ext := path.Ext(picPath)
 			if err := e.File.AddPictureFromBytes(
 				e.Options.SheetName,
 				cellName,
 				&excelize.Picture{
-					Extension: strings.ToLower(path.Ext(picPath)),
+					Extension: ext,
 					File:      fileBytes,
-					Format:    nil,
+					Format: &excelize.GraphicOptions{
+						LockAspectRatio: true,
+						AutoFit:         true,
+					},
 				},
 			); err != nil {
 				return err
