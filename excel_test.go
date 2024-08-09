@@ -16,9 +16,10 @@ type User struct {
 
 func TestSaveExcel(t *testing.T) {
 	users := mockUsers()
+	sheetName := "sheet1"
 	if err := New().
-		SetRow([]string{"兔学院学生表"}).
-		SetSliceDataWithTag(&users).
+		SetSheetRow(sheetName, []string{"兔学院学生表"}).
+		SetSheetRowsWithHeader(sheetName, users).
 		SaveAs("sheet_name.xlsx").
 		Error; err != nil {
 		t.Error(err)
@@ -28,9 +29,10 @@ func TestSaveExcel(t *testing.T) {
 
 func TestSaveNilExcel(t *testing.T) {
 	var users []*User
+	sheetName := "sheet1"
 	if err := New().
-		SetRow([]string{"兔学院学生表"}).
-		SetSliceDataWithTag(users).
+		SetSheetRow(sheetName, []string{"兔学院学生表"}).
+		SetSheetRowsWithHeader(sheetName, users).
 		SaveAs("user_generate_nil.xlsx").
 		Error; err != nil {
 		t.Error(err)
@@ -47,9 +49,10 @@ func TestWriterExcel(t *testing.T) {
 	defer file.Close()
 
 	users := mockUsers()
+	sheetName := "sheet1"
 	if err := New().
-		SetRow([]string{"兔学院学生表"}).
-		SetSliceDataWithTag(users).
+		SetSheetRow(sheetName, []string{"兔学院学生表"}).
+		SetSheetRowsWithHeader(sheetName, users).
 		Write(file).
 		Error; err != nil {
 		t.Error(err)
@@ -64,7 +67,7 @@ func mockUsers() []*User {
 		Name:  "兔瓜",
 		Age:   11,
 		Class: "A1",
-		Pic:   "",
+		Pic:   "https://test.entangledcotton.com/cotton/test/22.jpeg",
 	}
 	user2 := User{
 		Id:    2,

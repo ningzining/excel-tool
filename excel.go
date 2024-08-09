@@ -6,10 +6,6 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const (
-	defaultSheetName = "Sheet1"
-)
-
 type Excel struct {
 	File    *excelize.File
 	Options *options
@@ -18,8 +14,7 @@ type Excel struct {
 
 func New(opts ...Option) *Excel {
 	o := &options{
-		SheetName: defaultSheetName,
-		Row:       1,
+		Row: 1,
 	}
 	for _, opt := range opts {
 		opt.apply(o)
@@ -28,6 +23,7 @@ func New(opts ...Option) *Excel {
 		File:    excelize.NewFile(),
 		Options: o,
 	}
+
 	return excel
 }
 

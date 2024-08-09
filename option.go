@@ -1,8 +1,7 @@
 package main
 
 type options struct {
-	SheetName string
-	Row       int
+	Row int
 }
 
 type Option interface {
